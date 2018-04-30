@@ -1060,7 +1060,6 @@ InitializePageTablePool (
   )
 {
   VOID                      *Buffer;
-  BOOLEAN                   IsModified;
 
   //
   // Do not allow re-entrance.
@@ -1070,7 +1069,6 @@ InitializePageTablePool (
   }
 
   mPageTablePoolLock = TRUE;
-  IsModified = FALSE;
 
   //
   // Always reserve at least PAGE_TABLE_POOL_UNIT_PAGES, including one page for
@@ -1116,17 +1114,16 @@ InitializePageTablePool (
     NULL,
     (PHYSICAL_ADDRESS)(UINTN)Buffer,
     EFI_PAGES_TO_SIZE (PoolPages),
-    EFI_MEMORY_RO,
+    0,
     PageActionSet,
     AllocatePageTableMemory,
     NULL,
-    &IsModified
+    NULL
     );
-  ASSERT (IsModified == TRUE);
 
 Done:
   mPageTablePoolLock = FALSE;
-  return IsModified;
+  return TRUE;
 }
 
 /**
@@ -1347,9 +1344,17 @@ InitializePageTableLib (
   if (CurrentPagingContext.ContextData.X64.PageTableBase != 0 &&
       (CurrentPagingContext.ContextData.Ia32.Attributes &
        PAGE_TABLE_LIB_PAGING_CONTEXT_IA32_X64_ATTRIBUTES_PAE) != 0) {
-    DisableReadOnlyPageWriteProtect ();
+
+    BOOLEAN IsWpEnabled;
+
+    IsWpEnabled = IsReadOnlyPageWriteProtected ();
+    if (IsWpEnabled) {
+      DisableReadOnlyPageWriteProtect ();
+    }
     InitializePageTablePool (1);
-    EnableReadOnlyPageWriteProtect ();
+    if (IsWpEnabled) {
+      EnableReadOnlyPageWriteProtect ();
+    }
   }
 
   if (HEAP_GUARD_NONSTOP_MODE || NULL_DETECTION_NONSTOP_MODE) {
