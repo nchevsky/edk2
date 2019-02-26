@@ -48,8 +48,8 @@ STATIC EFI_GRAPHICS_OUTPUT_MODE_INFORMATION mQemuRamfbModeInfo[] = {
     480,  // VerticalResolution
   },{
     0,    // Version
-    800,  // HorizontalResolution
-    600,  // VerticalResolution
+    1280,  // HorizontalResolution
+    720,  // VerticalResolution
   },{
     0,    // Version
     1024, // HorizontalResolution
@@ -249,8 +249,18 @@ InitializeQemuRamfb (
       (UINT64)sizeof (RAMFB_CONFIG), (UINT64)FwCfgSize));
     return EFI_PROTOCOL_ERROR;
   }
+  
+  RAMFB_CONFIG                          TheirConfig;
+  ZeroMem(&TheirConfig,sizeof(TheirConfig));
+  QemuFwCfgSelectItem (mRamfbFwCfgItem);
+  QemuFwCfgReadBytes(sizeof(TheirConfig),&TheirConfig);
+  if(TheirConfig.Width&&TheirConfig.Height){
+      //update native res
+      mQemuRamfbModeInfo[1].HorizontalResolution=TheirConfig.Width;
+      mQemuRamfbModeInfo[1].VerticalResolution=TheirConfig.Height;
+  }
 
-  MaxFbSize = 0;
+  MaxFbSize = 0;//4096*4096*4;
   for (Index = 0; Index < ARRAY_SIZE (mQemuRamfbModeInfo); Index++) {
     mQemuRamfbModeInfo[Index].PixelsPerScanLine =
       mQemuRamfbModeInfo[Index].HorizontalResolution;
@@ -281,7 +291,7 @@ InitializeQemuRamfb (
   mQemuRamfbMode.FrameBufferBase = FbBase;
 
   //
-  // 800 x 600
+  // 1280 x 720
   //
   QemuRamfbGraphicsOutputSetMode (&mQemuRamfbGraphicsOutput, 1);
 
